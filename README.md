@@ -39,8 +39,8 @@ fmt.Println(si == 12_000)
 // true
 ```
 
-Format IEC/SI to string,
-Use 'xunit' as you would 'time' package to construct a size:  
+Use 'xunit' as you would 'time' package to construct an IEC/SI size,
+and format it to string.
 
 ```go
 
@@ -49,12 +49,13 @@ fmt.Println(iec.String())
 // 150KiB
 
 si := 1500 * xunit.KB
-fmt.Println(iec.String())
+fmt.Println(si.String())
 // 1.5MB
 
-fmt.Println(iec.Format(xunit.KB, 0, 0))
+fmt.Println(si.Format(xunit.KB, 0, 0))
 // 1500kB
-fmt.Println(iec.Format(xunit.KB, 0, ','))
+
+fmt.Println(si.Format(xunit.KB, 0, ','))
 // 1,500kB
 ```
 
