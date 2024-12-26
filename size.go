@@ -8,9 +8,8 @@ import (
 
 var _ = fmt.Print
 
-type DataSize uint64
-type SISize DataSize
-type IECSize DataSize
+type SISize uint64
+type IECSize uint64
 
 const (
 	// Decimal

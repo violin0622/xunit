@@ -70,11 +70,6 @@ func TestIECString(t *testing.T) {
 	}
 }
 
-func TestFoo() {
-	a := xunit.B + xunit.KB
-	a.Format(xunit.B, 0, ' ')
-}
-
 func BenchmarkIECString(b *testing.B) {
 	var iec xunit.IECSize = xunit.IECSize(123.5 * float64(xunit.TiB))
 	for i := 0; i < b.N; i++ {
