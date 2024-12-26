@@ -70,6 +70,11 @@ func TestIECString(t *testing.T) {
 	}
 }
 
+func TestFoo() {
+	a := xunit.B + xunit.KB
+	a.Format(xunit.B, 0, ' ')
+}
+
 func BenchmarkIECString(b *testing.B) {
 	var iec xunit.IECSize = xunit.IECSize(123.5 * float64(xunit.TiB))
 	for i := 0; i < b.N; i++ {
@@ -280,7 +285,7 @@ func TestFormatSI(t *testing.T) {
 
 	assert := asserter{t}
 	for _, c := range cases {
-		a, e := c.size.FormatSI(c.unit, c.precision, c.seg)
+		a, e := c.size.Format(c.unit, c.precision, c.seg)
 		assert.nil(e)
 		assert.equal(a, c.str)
 	}

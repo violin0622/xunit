@@ -14,7 +14,7 @@ type IECSize DataSize
 
 const (
 	// Decimal
-	B DataSize = 1
+	B = 1
 
 	KB SISize = 1000 * SISize(B)
 	MB        = 1000 * KB
@@ -42,38 +42,30 @@ var ErrInvalidSIString = errors.New(`invalid SI string`)
 var ErrInvalidIECString = errors.New(`invalid IEC string`)
 var ErrOverflow = errors.New(`overflow`)
 
-func reverse(s string) string {
-	r := []rune(s)
-	for i, j := 0, len(r)-1; i < j; i, j = i+1, j-1 {
-		r[i], r[j] = r[j], r[i]
-	}
-	return string(r)
-}
-
 func (s SISize) String() string {
 	var str string
 	switch {
 	case s >= EB:
-		str, _ = s.FormatSI(EB, -1, 0)
+		str, _ = s.Format(EB, -1, 0)
 	case s >= PB:
-		str, _ = s.FormatSI(PB, -1, 0)
+		str, _ = s.Format(PB, -1, 0)
 	case s >= TB:
-		str, _ = s.FormatSI(TB, -1, 0)
+		str, _ = s.Format(TB, -1, 0)
 	case s >= GB:
-		str, _ = s.FormatSI(GB, -1, 0)
+		str, _ = s.Format(GB, -1, 0)
 	case s >= MB:
-		str, _ = s.FormatSI(MB, -1, 0)
+		str, _ = s.Format(MB, -1, 0)
 	case s >= KB:
-		str, _ = s.FormatSI(KB, -1, 0)
+		str, _ = s.Format(KB, -1, 0)
 	default:
-		str, _ = s.FormatSI(1, -1, 0)
+		str, _ = s.Format(1, -1, 0)
 	}
 	return str
 }
 
-// FormatSI convert SISize to string. prec 0 means no fractional part. prec 1 means
+// Format convert SISize to string. prec 0 means no fractional part. prec 1 means
 // one fractional part digit, and so on. prec -1 means remain all of fractional part digits.
-func (s SISize) FormatSI(unit SISize, prec int, seg byte) (string, error) {
+func (s SISize) Format(unit SISize, prec int, seg byte) (string, error) {
 	var n int
 	var low uint64
 	var arr [32]byte
