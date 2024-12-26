@@ -49,7 +49,6 @@ func TestIECString(t *testing.T) {
 		size xunit.IECSize
 		str  string
 	}{
-		// {101*xunit.MiB + 10*xunit.KiB, `0B`},
 		{xunit.IECSize(0), `0B`},
 		{xunit.IECSize(xunit.B), `1B`},
 		{xunit.IECSize(17 * xunit.B), `17B`},
@@ -88,12 +87,13 @@ func TestParseSI(t *testing.T) {
 
 		{xunit.SISize(0), ``},
 		{xunit.SISize(0), `0B`},
+		{xunit.SISize(0), `0kB`},
+		{xunit.SISize(500), `0.5kB`},
 		{xunit.SISize(123), `123 B`},
 		{xunit.SISize(1230), ` 1,2 30 B `},
 		{xunit.SISize(1230), ` 1.23 kB `},
 		{xunit.SISize(1230), ` 1.2300 kB `},
 		{xunit.SISize(11230), ` 11.2300 kB `},
-		{xunit.SISize(0), `0B`},
 		{xunit.SISize(xunit.B), `1B`},
 		{xunit.SISize(17 * xunit.B), `17B`},
 		{xunit.KB, `1kB`},
@@ -118,6 +118,15 @@ func BenchmarkParseSI(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		size, err := xunit.ParseSI(` 11.2300 kB `)
 		if err != nil || size != 11230 {
+			b.Fail()
+		}
+	}
+}
+
+func BenchmarkParseIEC(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		size, err := xunit.ParseIEC(` 1.1 KiB `)
+		if err != nil || size != 1126 {
 			b.Fail()
 		}
 	}
@@ -158,6 +167,86 @@ func TestParseSIInvalid(t *testing.T) {
 		size, e := xunit.ParseSI(c)
 		assert.equal(e, xunit.ErrInvalidSIString, `%d '%s'`, i, c)
 		assert.equal(size, xunit.SISize(0))
+	}
+}
+
+func TestParseIEC(t *testing.T) {
+	cases := []struct {
+		size xunit.IECSize
+		str  string
+	}{
+		{xunit.IECSize(0), ``},
+		{xunit.IECSize(0), `0B`},
+		{xunit.IECSize(0), `0KiB`},
+		{xunit.IECSize(512), `0.5KiB`},
+		{xunit.IECSize(123), `123 B`},
+		{xunit.IECSize(1230), ` 1,2 30 B `},
+		{xunit.IECSize(1280), ` 1.25 KiB `},
+		{xunit.IECSize(1280), ` 1.2500 KiB `},
+		{xunit.IECSize(11520), ` 11.2500 KiB `},
+		{xunit.KiB, `1KiB`},
+		{115 * xunit.MiB, `115MiB`},
+		{1024 * xunit.MiB, `1GiB`},
+		{xunit.GiB, `1GiB`},
+		{xunit.TiB, `1TiB`},
+		{xunit.EiB, `1EiB`},
+		{xunit.IECSize(math.MaxUint64), `16EiB`},     //16EiB is the maximum supported IEC size.
+		{xunit.IECSize(math.MaxUint64), `16,384PiB`}, //16EiB is the maximum supported IEC size.
+		{xunit.MiB + xunit.KiB + 24*xunit.IECSize(xunit.B), `1.001MiB`},
+		{xunit.MiB + 1023*xunit.MiB, `1GiB`},
+		{xunit.IECSize(1.5 * float64(xunit.MiB)), `1.5MiB`},
+	}
+	for i, c := range cases {
+		t.Run(fmt.Sprintf(`%d_%s_%v`, i, c.str, c.size), func(t *testing.T) {
+			assert := asserter{t}
+			size, e := xunit.ParseIEC(c.str)
+			assert.nil(e)
+			assert.equal(size, c.size)
+		})
+	}
+}
+
+func TestParseIECInvalid(t *testing.T) {
+	// theses string is invalid.
+	cases := []string{
+		`,`,
+		`B`,
+		`kB`,
+		`KB`,
+		`KiB`,
+		`1.2B`,
+		`,33B`,
+		`33,B`,
+		`3,,3B`,
+		`33.3Ki B`,
+		`33.3K iB`,
+		`33.3Ki_B`,
+		`33.3K_iB`,
+		`33.3K,iB`,
+		`33.3Ki,B`,
+		`33,.3KiB`,
+		`33,.,3KiB`,
+		`33,.,3KiB`,
+		`33.33,3KiB`,
+		`_`,
+		`_33B`,
+		`33_B`,
+		`3__3B`,
+	}
+	var i int
+	var c string
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Log(i, c)
+		}
+	})
+	for i, c = range cases {
+		t.Run(fmt.Sprintf(`%d_%s`, i, c), func(t *testing.T) {
+			assert := asserter{t}
+			size, e := xunit.ParseIEC(c)
+			assert.equal(e, xunit.ErrInvalidIECString)
+			assert.equal(size, xunit.IECSize(0))
+		})
 	}
 }
 

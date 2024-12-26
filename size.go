@@ -34,11 +34,12 @@ const (
 
 var iecM = map[IECSize]string{IECSize(B): `B`, KiB: `KiB`, MiB: `MiB`, GiB: `GiB`, TiB: `TiB`, PiB: `PiB`, EiB: `EiB`}
 var siStr = map[SISize]string{SISize(B): `B`, KB: `kB`, MB: `MB`, GB: `GB`, TB: `TB`, PB: `PB`, EB: `EB`}
-var iecS = map[string]IECSize{`B`: IECSize(B), `KiB`: KiB, `MiB`: MiB, `GiB`: GiB, `TiB`: TiB, `PiB`: PiB, `EiB`: EiB}
+var strIEC = map[string]IECSize{`B`: IECSize(B), `KiB`: KiB, `MiB`: MiB, `GiB`: GiB, `TiB`: TiB, `PiB`: PiB, `EiB`: EiB}
 var strSI = map[string]SISize{`B`: SISize(B), `kB`: KB, `MB`: MB, `GB`: GB, `TB`: TB, `PB`: PB, `EB`: EB}
 
 var ErrInvalidUnit = errors.New(`unsupported unit`)
 var ErrInvalidSIString = errors.New(`invalid SI string`)
+var ErrInvalidIECString = errors.New(`invalid IEC string`)
 var ErrOverflow = errors.New(`overflow`)
 
 func reverse(s string) string {
@@ -138,10 +139,11 @@ func (s IECSize) String() string {
 }
 
 func MustParseSI(s string) SISize {
-	if len(s) == 0 {
-		return 0
+	si, err := ParseSI(s)
+	if err != nil {
+		panic(err)
 	}
-	return 0
+	return si
 }
 
 func ParseSI(s string) (SISize, error) {
@@ -150,7 +152,7 @@ func ParseSI(s string) (SISize, error) {
 	}
 	var n uint64
 	var dot int
-	var sep, unitprefix bool
+	var sep, unitprefix, digit bool
 	for i := range s {
 		switch s[i] {
 		case ' ': //ignore space
@@ -172,6 +174,7 @@ func ParseSI(s string) (SISize, error) {
 			if dot != 0 {
 				dot += 1
 			}
+			digit = true
 		case '0':
 			if n != 0 {
 				n *= 10
@@ -179,8 +182,9 @@ func ParseSI(s string) (SISize, error) {
 			if dot > 0 {
 				dot += 1
 			}
+			digit = true
 		case 'k', 'M', 'G', 'T', 'P', 'E':
-			if n == 0 {
+			if n == 0 && !digit {
 				return 0, ErrInvalidSIString
 			}
 			if dot == 1 {
@@ -279,6 +283,75 @@ func fmtFrac2(buf []byte, n uint64, high uint64, low uint64) (uint64, int) {
 	return n, p
 }
 
-func parseIEC(s string) IECSize {
-	return 0
+func MustParseIEC(s string) IECSize {
+	iec, err := ParseIEC(s)
+	if err != nil {
+		panic(err)
+	}
+	return iec
+}
+
+func ParseIEC(s string) (IECSize, error) {
+	if len(s) == 0 {
+		return 0, nil
+	}
+	var n uint64
+	var dot int
+	var sep, unitprefix, digit bool
+	for i := range s {
+		switch s[i] {
+		case ' ': //ignore space
+		case ',', '_':
+			if sep || n == 0 || dot > 0 {
+				return 0, ErrInvalidIECString
+			}
+			sep = true
+			continue
+		case '.':
+			if sep {
+				return 0, ErrInvalidIECString
+			}
+			dot += 1
+		case '1', '2', '3', '4', '5', '6', '7', '8', '9':
+			sep = false
+			digit = true
+			n *= 10
+			n += uint64(s[i] - '0')
+			if dot != 0 {
+				dot += 1
+			}
+		case '0':
+			if n != 0 {
+				n *= 10
+			}
+			if dot > 0 {
+				dot += 1
+			}
+			digit = true
+		case 'K', 'M', 'G', 'T', 'P', 'E':
+			if n == 0 && !digit {
+				return 0, ErrInvalidIECString
+			}
+			if dot == 1 {
+				return 0, ErrInvalidIECString
+			}
+			if i >= len(s)+1 || s[i+1] != 'i' || s[i+2] != 'B' {
+				return 0, ErrInvalidIECString
+			}
+			unit := strIEC[string(s[i:i+3])]
+			n = uint64(float64(n) / math.Pow10(max(dot-1, 0)) * float64(unit))
+			unitprefix = true
+		case 'i':
+			if i == len(s) || s[i+1] != 'B' {
+				return 0, ErrInvalidIECString
+			}
+		case 'B':
+			if i < 1 || (!unitprefix && dot > 0) || sep {
+				return 0, ErrInvalidIECString
+			}
+		default:
+			return 0, ErrInvalidIECString
+		}
+	}
+	return IECSize(n), nil
 }
